@@ -1,25 +1,62 @@
-import logo from './logo.svg';
-import './App.css';
+
+import { useState, useEffect, createContext } from 'react';
+import {
+	BrowserRouter as Router,
+	Route,
+	Switch
+} from 'react-router-dom';
+import PrivateRoute from './components/routing/PrivateRoute';
+import { supabase } from './supabaseClient';
+import Home from './Home';
+import Header from './components/header/Header';
+import Auth from './components/auth/Auth';
+import Account from './components/auth/Account';
+
+export const SessionContext = createContext(null);
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+	const [session, setSession] = useState(null);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		setSession(supabase.auth.session());
+
+		supabase.auth.onAuthStateChange((_event, session) => {
+			setSession(session);
+		});
+	}, []);
+
+	useEffect(() => {
+		setLoading(false);
+	}, [session]);
+
+	if (loading) {
+		return <div>loading...</div>;
+	}
+
+	const isAuth = () => {
+		if (session) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	return (
+		<SessionContext.Provider value={session}>
+			<Router>
+				<Header />
+				<main>
+					<Switch>
+						<Route path="/login" component={() => Auth(session)} />
+						<PrivateRoute authed={isAuth()} exact path="/" component={Home} />
+						<PrivateRoute authed={isAuth()} path="/profile" component={Account} />
+					</Switch>
+				</main>
+			</Router>
+		</SessionContext.Provider>
+	);
 }
 
 export default App;
